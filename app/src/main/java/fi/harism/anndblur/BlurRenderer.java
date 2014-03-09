@@ -193,9 +193,10 @@ public class BlurRenderer {
         }
 
         // Translate values for off-screen drawing
-        int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
-        int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
-
+//        int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
+//        int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
+        int[] coordinates = new int[2];
+        mView.getLocationInWindow(coordinates);
         // Restore canvas to its original state
         mCanvas.restoreToCount(1);
         mCanvas.setBitmap(mBitmap);
@@ -204,7 +205,7 @@ public class BlurRenderer {
         mCanvas.setMatrix(mMatrixScale);
         // Off-screen bitmap does not cover the whole screen
         // Use canvas translate to match its position on screen
-        mCanvas.translate(dx, dy);
+        mCanvas.translate(-coordinates[0], -coordinates[1]);
         // Clip rect is the same as we have
         // TODO: Why does this not work on API 18?
         // mCanvas.clipRect(mRectVisibleGlobal);
