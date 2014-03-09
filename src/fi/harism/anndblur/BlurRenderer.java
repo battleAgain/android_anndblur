@@ -44,7 +44,8 @@ public class BlurRenderer {
     private final Canvas mCanvas;
     private final Matrix mMatrixScale;
     private final Matrix mMatrixScaleInv;
-    private final Rect mRectVisibleGlobal;
+    // private final Rect mRectVisibleGlobal;
+    private final int[] mLocationInWindow;
     private Bitmap mBitmap;
 
     private final RenderScript mRS;
@@ -63,7 +64,8 @@ public class BlurRenderer {
     public BlurRenderer(View view) {
         mView = view;
         mCanvas = new Canvas();
-        mRectVisibleGlobal = new Rect();
+        // mRectVisibleGlobal = new Rect();
+        mLocationInWindow = new int[2];
 
         // Prepare matrices for scaling up/down the off-screen bitmap
         mMatrixScale = new Matrix();
@@ -108,14 +110,15 @@ public class BlurRenderer {
         mRadiusStruct.divsum *= mRadiusStruct.divsum;
 
         // Prepare dv allocation
-        mAllocationDv = Allocation.createSized(mRS, Element.U8(mRS), 256 * mRadiusStruct.divsum);
+        mAllocationDv = Allocation.createSized(mRS, Element.U8(mRS),
+                256 * mRadiusStruct.divsum);
         mScriptStackBlur.set_initializeDv_divsum(mRadiusStruct.divsum);
         mScriptStackBlur.forEach_initializeDv(mAllocationDv);
     }
 
     /**
-     * Returns true if this draw call originates from this class
-     * and is meant to be an off-screen drawing pass.
+     * Returns true if this draw call originates from this class and is meant to
+     * be an off-screen drawing pass.
      */
     public boolean isOffscreenCanvas(Canvas canvas) {
         return canvas == mCanvas;
@@ -138,12 +141,14 @@ public class BlurRenderer {
         // On first step iterate over y = [0, mBitmap.getHeight]
         mLaunchOptions.setX(0, 1);
         mLaunchOptions.setY(0, mBitmap.getHeight());
-        mScriptStackBlur.forEach_blurHorizontal(mAllocationBitmap, mLaunchOptions);
+        mScriptStackBlur.forEach_blurHorizontal(mAllocationBitmap,
+                mLaunchOptions);
 
         // On second step iterate over x = [0, mBitmap.getWidth]
         mLaunchOptions.setX(0, mBitmap.getWidth());
         mLaunchOptions.setY(0, 1);
-        mScriptStackBlur.forEach_blurVertical(mAllocationBitmap, mLaunchOptions);
+        mScriptStackBlur
+                .forEach_blurVertical(mAllocationBitmap, mLaunchOptions);
 
         // Copy bitmap allocation back to off-screen bitmap
         mAllocationBitmap.copyTo(mBitmap);
@@ -164,7 +169,7 @@ public class BlurRenderer {
      */
     private void drawOffscreenBitmap() {
         // Grab global visible rect for later use
-        mView.getGlobalVisibleRect(mRectVisibleGlobal);
+        // mView.getGlobalVisibleRect(mRectVisibleGlobal);
 
         // Calculate scaled off-screen bitmap width and height
         int width = Math.round(mView.getWidth() * BITMAP_SCALE_FACTOR);
@@ -181,27 +186,30 @@ public class BlurRenderer {
         height = Math.max(height, 1);
 
         // Allocate new off-screen bitmap only when needed
-        if (mBitmap == null || mBitmap.getWidth() != width || mBitmap.getHeight() != height) {
-            mBitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888);
+        if (mBitmap == null || mBitmap.getWidth() != width
+                || mBitmap.getHeight() != height) {
+            mBitmap = Bitmap.createBitmap(width, height,
+                    Bitmap.Config.ARGB_8888);
             mAllocationBitmap = Allocation.createFromBitmap(mRS, mBitmap);
-            mAllocationRgb = Allocation.createSized(mRS, Element.U8_3(mRS), width * height);
+            mAllocationRgb = Allocation.createSized(mRS, Element.U8_3(mRS),
+                    width * height);
             mSizeStruct.width = width;
             mSizeStruct.height = height;
-            // Due to adjusting width into multiple of 4 calculate scale matrix only here
-            mMatrixScale.setScale((float)width / mView.getWidth(), (float)height / mView.getHeight());
+            // Due to adjusting width into multiple of 4 calculate scale matrix
+            // only here
+            mMatrixScale.setScale((float) width / mView.getWidth(),
+                    (float) height / mView.getHeight());
             mMatrixScale.invert(mMatrixScaleInv);
         }
 
         // Translate values for off-screen drawing
-		/*
-          int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
-          int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
-
-          replaced dx and dy with View.getLocationInWindow() coordinates because translate was bad for
-          using BlurLinearLayout and BlurRelativeLayout as children for other Views than root View
-        */
-        int[] coordinates = new int[2];
-        mView.getLocationInWindow(coordinates);
+        // int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
+        // int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
+        //
+        // Replaced dx and dy with View.getLocationInWindow() coordinates
+        // because translate was bad for using BlurLinearLayout and
+        // BlurRelativeLayout as children for other Views than root View.
+        mView.getLocationInWindow(mLocationInWindow);
         // Restore canvas to its original state
         mCanvas.restoreToCount(1);
         mCanvas.setBitmap(mBitmap);
@@ -210,7 +218,7 @@ public class BlurRenderer {
         mCanvas.setMatrix(mMatrixScale);
         // Off-screen bitmap does not cover the whole screen
         // Use canvas translate to match its position on screen
-        mCanvas.translate(-coordinates[0], -coordinates[1]);
+        mCanvas.translate(-mLocationInWindow[0], -mLocationInWindow[1]);
         // Clip rect is the same as we have
         // TODO: Why does this not work on API 18?
         // mCanvas.clipRect(mRectVisibleGlobal);
