@@ -193,7 +193,7 @@ public class BlurRenderer {
         }
 
         // Translate values for off-screen drawing
-		/*
+        /*
           int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
           int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
 
