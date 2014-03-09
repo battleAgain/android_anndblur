@@ -193,8 +193,13 @@ public class BlurRenderer {
         }
 
         // Translate values for off-screen drawing
-//        int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
-//        int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
+        /*
+          int dx = -(Math.min(0, mView.getLeft()) + mRectVisibleGlobal.left);
+          int dy = -(Math.min(0, mView.getTop()) + mRectVisibleGlobal.top);
+
+          replaced dx and dy with View.getLocationInWindow() coordinates because translate was bad for
+          using BlurLinearLayout and BlurRelativeLayout as children for other Views than root View
+        */
         int[] coordinates = new int[2];
         mView.getLocationInWindow(coordinates);
         // Restore canvas to its original state
