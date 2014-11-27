@@ -55,7 +55,8 @@ public class BlurRenderer {
     private final ScriptField_SizeStruct.Item mSizeStruct;
 
     private Allocation mAllocationBitmap;
-    private Allocation mAllocationRgb;
+    private Allocation mAllocationBitmapTmp;
+    //private Allocation mAllocationBitmapDst;
     private Allocation mAllocationDv;
 
     /**
@@ -133,8 +134,8 @@ public class BlurRenderer {
 
         // Set script variables
         mScriptStackBlur.bind_dv(mAllocationDv);
-        mScriptStackBlur.bind_bitmap(mAllocationBitmap);
-        mScriptStackBlur.bind_rgb(mAllocationRgb);
+        mScriptStackBlur.set_bitmap(mAllocationBitmap);
+        mScriptStackBlur.set_bitmapTmp(mAllocationBitmapTmp);
         mScriptStackBlur.set_sizeStruct(mSizeStruct);
         mScriptStackBlur.set_radiusStruct(mRadiusStruct);
 
@@ -179,7 +180,7 @@ public class BlurRenderer {
         // If bitmap width is not multiple of 4 - in RenderScript
         // index = y * width
         // does not calculate correct index for line start index.
-        width = width & ~0x03;
+        // width = (width + 3) & ~0x03;
 
         // Width and height must be > 0
         width = Math.max(width, 1);
@@ -191,8 +192,9 @@ public class BlurRenderer {
             mBitmap = Bitmap.createBitmap(width, height,
                     Bitmap.Config.ARGB_8888);
             mAllocationBitmap = Allocation.createFromBitmap(mRS, mBitmap);
-            mAllocationRgb = Allocation.createSized(mRS, Element.U8_3(mRS),
-                    width * height);
+            mAllocationBitmapTmp = Allocation.createFromBitmap(mRS, mBitmap);
+            //mAllocationBitmapTmp = Allocation.createSized(mRS,
+            //        Element.U8_3(mRS), width * height);
             mSizeStruct.width = width;
             mSizeStruct.height = height;
             // Due to adjusting width into multiple of 4 calculate scale matrix

@@ -22,7 +22,7 @@
 
 #pragma version(1)
 #pragma rs java_package_name(fi.harism.anndblur)
-#pragma rs_fp_imprecise
+#pragma rs_fp_relaxed
 
 #include "rs_types.rsh"
 
@@ -48,8 +48,8 @@ RadiusStruct_t radiusStruct;
 //
 // Variables for dynamic allocations
 //
-uchar4* bitmap;
-uchar3* rgb;
+rs_allocation bitmap;
+rs_allocation bitmapTmp;
 uint8_t* dv;
 
 //
@@ -66,7 +66,6 @@ void initializeDv(uint8_t* out, const void* userdata, uint32_t x) {
 void blurHorizontal(const uchar4* unused, const void* userData, uint32_t x, uint32_t y) {
     uint3 sum = 0, insum = 0, outsum = 0;
     uint8_t r1 = radiusStruct.radius + 1;
-    uint32_t yw = y * sizeStruct.width;
     int wmax = sizeStruct.width - 1;
     
     uint16_t stackstart;
@@ -74,7 +73,7 @@ void blurHorizontal(const uchar4* unused, const void* userData, uint32_t x, uint
     uint3 stack[radiusStruct.radius + radiusStruct.radius + 1];
     
     for (int i = -radiusStruct.radius; i <= radiusStruct.radius; i++) {
-        uchar3 p = bitmap[yw + min(wmax, max(i, 0))].rgb;
+        uchar4 p = rsGetElementAt_uchar4(bitmap, min(wmax, max(i, 0)), y);
         
         uint3 *sir = &stack[i + radiusStruct.radius];
         (*sir).r = p.r;
@@ -90,9 +89,8 @@ void blurHorizontal(const uchar4* unused, const void* userData, uint32_t x, uint
     }
     
     for (int x = 0; x < sizeStruct.width; ++x) {
-        rgb[yw + x].r = dv[sum.r];
-        rgb[yw + x].g = dv[sum.g];
-        rgb[yw + x].b = dv[sum.b];
+        uchar4 outValue = { dv[sum.r], dv[sum.g], dv[sum.b], 0xFF };
+        rsSetElementAt_uchar4(bitmapTmp, outValue, x, y);
         
         sum -= outsum;
         
@@ -100,7 +98,7 @@ void blurHorizontal(const uchar4* unused, const void* userData, uint32_t x, uint
         uint3* sir = &stack[stackstart % radiusStruct.div];
         outsum -= *sir;
         
-        uchar3 p = bitmap[yw + min(x + r1, wmax)].rgb;
+        uchar4 p = rsGetElementAt_uchar4(bitmap, min(x + r1, wmax), y);
         (*sir).r = p.r;
         (*sir).g = p.g;
         (*sir).b = p.b;
@@ -123,21 +121,18 @@ void blurVertical(const uchar4* unused, const void* userData, uint32_t x, uint32
     uint3 sum = 0, insum = 0, outsum = 0;
     
     uint8_t r1 = radiusStruct.radius + 1;
-    uint32_t yi;
     int hmax = sizeStruct.height - 1;
-    int yp = -radiusStruct.radius * sizeStruct.width;
-       
+    
     uint16_t stackstart;
     uint16_t stackpointer = radiusStruct.radius;    
     uint3 stack[radiusStruct.radius + radiusStruct.radius + 1];
     
     for (int i = -radiusStruct.radius; i <= radiusStruct.radius; i++) {
-        yi = max(0, yp) + x;
-        
         uint3* sir = &stack[i + radiusStruct.radius];
-        (*sir).r = rgb[yi].r;
-        (*sir).g = rgb[yi].g;
-        (*sir).b = rgb[yi].b;
+        uchar4 inValue = rsGetElementAt_uchar4(bitmapTmp, x, min(hmax, max(0, i)));
+        (*sir).r = inValue.r;
+        (*sir).g = inValue.g;
+        (*sir).b = inValue.b;
         
         sum += (*sir) * (r1 - abs(i));
         
@@ -146,17 +141,11 @@ void blurVertical(const uchar4* unused, const void* userData, uint32_t x, uint32
         } else {
             outsum += *sir;
         }
-        
-        if (i < hmax) {
-            yp += sizeStruct.width;
-        }
     }
     
-    yi = x;
     for (int y = 0; y < sizeStruct.height; y++) {
-        bitmap[yi].r = dv[sum.r];
-        bitmap[yi].g = dv[sum.g];
-        bitmap[yi].b = dv[sum.b];
+        uchar4 outValue = { dv[sum.r], dv[sum.g], dv[sum.b], 0xFF };
+        rsSetElementAt_uchar4(bitmap, outValue, x, y);
         
         sum -= outsum;
         
@@ -164,17 +153,15 @@ void blurVertical(const uchar4* unused, const void* userData, uint32_t x, uint32
         uint3* sir = &stack[stackstart % radiusStruct.div];
         outsum -= *sir;
         
-        uint32_t ymin = x + min(y + r1, hmax) * sizeStruct.width;
-        (*sir).r = rgb[ymin].r;
-        (*sir).g = rgb[ymin].g;
-        (*sir).b = rgb[ymin].b;
+        uchar4 inValue = rsGetElementAt_uchar4(bitmapTmp, x, min(y + r1, hmax));
+        (*sir).r = inValue.r;
+        (*sir).g = inValue.g;
+        (*sir).b = inValue.b;
         insum += *sir;
         sum += insum;
         
         stackpointer = (stackpointer + 1) % radiusStruct.div;
         outsum += stack[stackpointer];
         insum -= stack[stackpointer];
-        
-        yi += sizeStruct.width;
     }
 }
