@@ -24,7 +24,6 @@ import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Matrix;
-import android.graphics.Rect;
 import android.support.v8.renderscript.Allocation;
 import android.support.v8.renderscript.Element;
 import android.support.v8.renderscript.RenderScript;
@@ -44,7 +43,6 @@ public class BlurRenderer {
     private final Canvas mCanvas;
     private final Matrix mMatrixScale;
     private final Matrix mMatrixScaleInv;
-    // private final Rect mRectVisibleGlobal;
     private final int[] mLocationInWindow;
     private Bitmap mBitmap;
 
@@ -176,12 +174,6 @@ public class BlurRenderer {
         int width = Math.round(mView.getWidth() * BITMAP_SCALE_FACTOR);
         int height = Math.round(mView.getHeight() * BITMAP_SCALE_FACTOR);
 
-        // This is added due to RenderScript limitations I faced.
-        // If bitmap width is not multiple of 4 - in RenderScript
-        // index = y * width
-        // does not calculate correct index for line start index.
-        // width = (width + 3) & ~0x03;
-
         // Width and height must be > 0
         width = Math.max(width, 1);
         height = Math.max(height, 1);
@@ -193,8 +185,6 @@ public class BlurRenderer {
                     Bitmap.Config.ARGB_8888);
             mAllocationBitmap = Allocation.createFromBitmap(mRS, mBitmap);
             mAllocationBitmapTmp = Allocation.createFromBitmap(mRS, mBitmap);
-            //mAllocationBitmapTmp = Allocation.createSized(mRS,
-            //        Element.U8_3(mRS), width * height);
             mSizeStruct.width = width;
             mSizeStruct.height = height;
             // Due to adjusting width into multiple of 4 calculate scale matrix
